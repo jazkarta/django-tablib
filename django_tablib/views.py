@@ -91,7 +91,7 @@ def generic_export(request, model_name=None):
     return export(request, model=model, queryset=qs)
 
 
-def import_csv(request, model, keys):
+def import_csv(request, model, keys, rel_app_labels):
     model_name = model.__name__
     if request.method == 'POST':
         csv_file = request.FILES.get('csv_file')
@@ -100,8 +100,24 @@ def import_csv(request, model, keys):
         for row in reader:
             rows += 1
             key_args = {}
+            related = {}
             for key in keys:
+                if '.' in key:
+                    mod, mod_key = key.split('.')
+                    if mod not in related:
+                        related[mod] = {}
+                    related[mod][mod_key] = row[key]
+                    continue
                 key_args[key] = row[key]
+            for rel_key, rel_fields in related.items():
+                app_label, app_model = rel_app_labels[rel_key]
+                rel_mod = get_model(app_label, app_model)
+                try:
+                    rel_obj = rel_mod.objects.get(**rel_fields)
+                except rel_mod.DoesNotExist:
+                    rel_obj = rel_mod(**rel_fields)
+                    rel_obj.save()
+                key_args[rel_key] = rel_obj
             try:
                 obj = model.objects.get(**key_args)
             except model.DoesNotExist:

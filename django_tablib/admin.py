@@ -13,6 +13,8 @@ class TablibAdmin(admin.ModelAdmin):
     change_list_template = 'tablib/change_list.html'
     formats = []
     headers = None
+    keys = []
+    rel_app_labels = {}
     export_filename = 'export'
 
     def __init__(self, *args, **kwargs):
@@ -56,7 +58,8 @@ class TablibAdmin(admin.ModelAdmin):
                       headers=self.headers, format=format, filename=filename)
 
     def tablib_import(self, request):
-        return import_csv(request, model=self.model, keys=self.keys)
+        return import_csv(request, model=self.model, keys=self.keys,
+                          rel_app_labels=self.rel_app_labels)
 
     def get_tablib_queryset(self, request):
         cl = ChangeList(request,

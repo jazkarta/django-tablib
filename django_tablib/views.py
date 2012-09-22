@@ -1,9 +1,15 @@
 from __future__ import absolute_import
 
+import csv
+
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.core.urlresolvers import reverse
 from django.http import Http404, HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponseRedirect
 from django.db.models.loading import get_model
+from django.shortcuts import render
+from django.contrib import messages
 
 from .base import mimetype_map
 from .datasets import SimpleDataset
@@ -84,3 +90,30 @@ def generic_export(request, model_name=None):
 
     return export(request, model=model, queryset=qs)
 
+
+def import_csv(request, model, keys):
+    model_name = model.__name__
+    if request.method == 'POST':
+        csv_file = request.FILES.get('csv_file')
+        reader = csv.DictReader(csv_file)
+        rows = 0
+        for row in reader:
+            rows += 1
+            key_args = {}
+            for key in keys:
+                key_args[key] = row[key]
+            try:
+                obj = model.objects.get(**key_args)
+            except model.DoesNotExist:
+                obj = model(**key_args)
+            for field, value in row.items():
+                setattr(obj, field, value)
+            obj.save()
+        message = "Imported %d rows" % rows
+        messages.add_message(request, messages.INFO, message)
+        url = reverse('admin:mcjudge_app_%s_changelist' % model_name.lower())
+        return HttpResponseRedirect(url)
+
+    return render(request, 'tablib/import_csv.html', {
+        'model': model_name
+    })

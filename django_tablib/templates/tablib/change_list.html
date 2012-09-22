@@ -4,6 +4,7 @@
 
 {% block object-tools %}
   <ul class="object-tools">
+    <li><a href="{{ import_url }}?{% for k,v in request.GET.items %}{{k}}={{v}}{% if not forloop.last %}&{% endif %}{% endfor %}" class="addlink">Import Data</a></li>
     {% for url in urls %}
       <li><a href="{{ url.1 }}?{% for k,v in request.GET.items %}{{k}}={{v}}{% if not forloop.last %}&{% endif %}{% endfor %}" class="addlink">{% blocktrans with url.0|upper as format %}Export to {{ format }} {% endblocktrans %}</a></li>
     {% endfor %}

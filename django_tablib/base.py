@@ -1,7 +1,6 @@
 import datetime
 import tablib
 
-from django.template.defaultfilters import date
 from django.utils.encoding import smart_unicode
 
 mimetype_map = {
@@ -27,7 +26,7 @@ class BaseDataset(tablib.Dataset):
         if t is str:
             return value
         elif t in [datetime.date, datetime.datetime]:
-            return date(value, 'SHORT_DATE_FORMAT').encode("utf-8")
+            return value.strftime('%Y-%m-%dT%H:%M:%SZ').encode("utf-8")
         else:
             return smart_unicode(value).encode(self.encoding)
 

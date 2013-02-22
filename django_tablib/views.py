@@ -127,7 +127,8 @@ def import_csv(request, model, keys, rel_app_labels):
             obj.save()
         message = "Imported %d rows" % rows
         messages.add_message(request, messages.INFO, message)
-        url = reverse('admin:mc_%s_changelist' % model_name.lower())
+        url = reverse('admin:%s_%s_changelist' % (model._meta.app_label,
+            model_name.lower()))
         return HttpResponseRedirect(url)
 
     return render(request, 'tablib/import_csv.html', {

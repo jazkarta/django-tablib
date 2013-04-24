@@ -39,9 +39,9 @@ class BaseDataset(tablib.Dataset):
                 if '.' in attr:
                     (fk_obj, fk_attr) = attr.split('.')
                     fk_obj = getattr(obj, fk_obj)
-                    attr = self._cleanval(getattr(fk_obj, fk_attr), fk_attr)
+                    attr = self._cleanval(getattr(fk_obj, fk_attr, ''), fk_attr)
                 else:
-                    attr = self._cleanval(getattr(obj, attr), attr)
+                    attr = self._cleanval(getattr(obj, attr, ''), attr)
             attrs.append(attr)
         return attrs
 

@@ -2,6 +2,7 @@ import datetime
 import tablib
 
 from django.utils.encoding import smart_unicode
+from django.utils.translation import ugettext_lazy as _
 
 mimetype_map = {
     'xls': 'application/vnd.ms-excel',
@@ -9,7 +10,8 @@ mimetype_map = {
     'html': 'text/html',
     'yaml': 'text/yaml',
     'json': 'application/json',
-    }
+}
+
 
 class BaseDataset(tablib.Dataset):
 
@@ -22,13 +24,23 @@ class BaseDataset(tablib.Dataset):
     def _cleanval(self, value, attr):
         if callable(value):
             value = value()
+        elif value is None or unicode(value) == u"None":
+            value = ""
+
         t = type(value)
         if t is str:
             return value
         elif t in [datetime.date, datetime.datetime]:
             return value.strftime('%Y-%m-%dT%H:%M:%SZ').encode("utf-8")
-        else:
+        elif t is bool:
+            value = _("Y") if value else _("N")
             return smart_unicode(value).encode(self.encoding)
+        # XXX: This code should not logically ever be hit, given the first
+        # elif, but it is present. Evaluate it please.
+        # elif t in [datetime.date, datetime.datetime]:
+        #     return date(value, 'SHORT_DATE_FORMAT').encode(self.encoding)
+
+        return smart_unicode(value).encode(self.encoding)
 
     def _getattrs(self, obj):
         attrs = []
@@ -36,12 +48,21 @@ class BaseDataset(tablib.Dataset):
             if callable(attr):
                 attr = self._cleanval(attr(obj), attr)
             else:
-                if '.' in attr:
-                    (fk_obj, fk_attr) = attr.split('.')
-                    fk_obj = getattr(obj, fk_obj)
-                    attr = self._cleanval(getattr(fk_obj, fk_attr, ''), fk_attr)
+                # XXX: This was the jazkarta version of this logical branch. It
+                # is unclear if the problems it solved are covered by the
+                # mainline changes below. Retain this as reference in case of
+                # bugs
+                # if '.' in attr:
+                #     (fk_obj, fk_attr) = attr.split('.')
+                #     fk_obj = getattr(obj, fk_obj)
+                #     attr = self._cleanval(getattr(fk_obj, fk_attr, ''), fk_attr)
+                # else:
+                #     attr = self._cleanval(getattr(obj, attr, ''), attr)
+                if hasattr(obj, 'get_%s_display' % attr):
+                    value = getattr(obj, 'get_%s_display' % attr)()
                 else:
-                    attr = self._cleanval(getattr(obj, attr, ''), attr)
+                    value = getattr(obj, attr)
+                attr = self._cleanval(value, attr)
             attrs.append(attr)
         return attrs
 
@@ -67,4 +88,3 @@ class BaseDataset(tablib.Dataset):
             row = django_object
 
         super(BaseDataset, self).append(row=row, col=col)
-

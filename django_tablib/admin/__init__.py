@@ -1,12 +1,19 @@
 import datetime
+import django
+
 from django.contrib import admin
 from django.contrib.admin.views.main import ChangeList
 from django.core.urlresolvers import reverse
 from django.http import Http404
-from django.utils.functional import update_wrapper
+from django_tablib.base import mimetype_map
 from django_tablib.views import export, import_csv
 
-from .base import mimetype_map
+try:
+    # Removed in Django 1.6; default to stdlib.
+    from functools import update_wrapper
+except ImportError:
+    from django.utils.functional import update_wrapper
+
 
 
 class TablibAdmin(admin.ModelAdmin):
@@ -22,14 +29,17 @@ class TablibAdmin(admin.ModelAdmin):
             if format not in mimetype_map:
                 msg = "%s is not a valid export format, please choose" \
                     " from the following options: %s" % (
-                    format,
-                    ', '.join(mimetype_map.keys()),
+                        format,
+                        ', '.join(mimetype_map.keys()),
                     )
                 raise ValueError(msg)
         super(TablibAdmin, self).__init__(*args, **kwargs)
 
     def get_urls(self):
-        from django.conf.urls.defaults import patterns, url
+        try:
+            from django.conf.urls import patterns, url
+        except ImportError:  # Django <1.4
+            from django.conf.urls.defaults import patterns, url
 
         def wrap(view):
             def wrapper(*args, **kwargs):
@@ -38,7 +48,8 @@ class TablibAdmin(admin.ModelAdmin):
 
         info = self.model._meta.app_label, self.model._meta.module_name
 
-        urlpatterns = patterns('',
+        urlpatterns = patterns(
+            '',
             url(r'^tablib-export/(?P<format>\w+)/$',
                 wrap(self.tablib_export),
                 name='%s_%s_tablib_export' % info),
@@ -62,26 +73,47 @@ class TablibAdmin(admin.ModelAdmin):
                           rel_app_labels=self.rel_app_labels)
 
     def get_tablib_queryset(self, request):
-        cl = ChangeList(request,
-            self.model,
-            self.list_display,
-            self.list_display_links,
-            self.list_filter,
-            self.date_hierarchy,
-            self.search_fields,
-            self.list_select_related,
-            self.list_per_page,
-            self.list_editable,
-            self,
-        )
-        return cl.get_query_set()
+        if django.VERSION >= (1, 4):
+            cl = ChangeList(
+                request,
+                self.model,
+                self.list_display,
+                self.list_display_links,
+                self.list_filter,
+                self.date_hierarchy,
+                self.search_fields,
+                self.list_select_related,
+                self.list_per_page,
+                self.list_max_show_all,
+                self.list_editable,
+                self,
+            )
+            return cl.get_query_set(request)
+        else:
+            cl = ChangeList(
+                request,
+                self.model,
+                self.list_display,
+                self.list_display_links,
+                self.list_filter,
+                self.date_hierarchy,
+                self.search_fields,
+                self.list_select_related,
+                self.list_per_page,
+                self.list_editable,
+                self,
+            )
+            return cl.get_query_set()
 
     def changelist_view(self, request, extra_context=None):
         info = self.model._meta.app_label, self.model._meta.module_name
         context = {'request': request}
         urls = []
         for format in self.formats:
-            urls.append((format, reverse('admin:%s_%s_tablib_export' % info, kwargs={'format': format}),))
+            urls.append(
+                (format, reverse(
+                    'admin:%s_%s_tablib_export' % info,
+                    kwargs={'format': format}),))
         context['urls'] = urls
         context['import_url'] = reverse('admin:%s_%s_tablib_import' % info)
         context.update(extra_context or {})

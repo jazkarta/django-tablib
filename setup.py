@@ -3,16 +3,17 @@
 from distutils.core import setup
 
 
-description = "A wrapper around Kenneth Reitz' tablib to work with Django models."
+description = "A wrapper around Kenneth Reitz' tablib to work with Django " \
+    "models."
 
-VERSION = '2.3'
+VERSION = '3.1'
 
 setup(
     name='django-tablib',
     version=VERSION,
     author='Joshua Ourisman',
     author_email='josh@joshourisman.com',
-    url='http://bitbucket.org/Josh/django-tablib',
+    url='https://github.com/joshourisman/django-tablib',
     description=description,
     long_description=description,
     license='MIT',
@@ -25,8 +26,8 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        ],
-    packages=['django_tablib',],
-    package_data = {'django_tablib': ['templates/tablib/*',],},
-    install_requires=['django', 'tablib',],
-    )
+    ],
+    packages=['django_tablib', ],
+    package_data={'django_tablib': ['templates/tablib/*', 'admin/*'], },
+    install_requires=['tablib', ],
+)

@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import csv
 
+from django import get_version
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
@@ -15,19 +16,23 @@ from .base import mimetype_map
 from .datasets import SimpleDataset
 
 
-def export(request, queryset=None, model=None, headers=None, format='xls',
+def export(request, queryset=None, model=None, headers=None, file_type='xls',
            filename='export'):
     if queryset is None:
         queryset = model.objects.all()
 
     dataset = SimpleDataset(queryset, headers=headers)
-    filename = '%s.%s' % (filename, format)
-    if not hasattr(dataset, format):
+    filename = '%s.%s' % (filename, file_type)
+    if not hasattr(dataset, file_type):
         raise Http404
-    response = HttpResponse(
-        getattr(dataset, format),
-        mimetype=mimetype_map.get(format, 'application/octet-stream')
-        )
+
+    response_kwargs = {}
+    key = 'content_type' if get_version().split('.')[1] > 6 else 'mimetype'
+    response_kwargs[key] = mimetype_map.get(
+        file_type, 'application/octet-stream')
+
+    response = HttpResponse(getattr(dataset, file_type), **response_kwargs)
+
     response['Content-Disposition'] = 'attachment; filename=%s' % filename
     return response
 
@@ -55,8 +60,9 @@ def generic_export(request, model_name=None):
 
     model = get_model(*model_name.split(".", 2))
     if not model:
-        raise ImproperlyConfigured("Model %s is in settings.TABLIB_MODELS but"
-                                    " could not be loaded" % model_name)
+        raise ImproperlyConfigured(
+            "Model %s is in settings.TABLIB_MODELS but"
+            " could not be loaded" % model_name)
 
     qs = model._default_manager.all()
 
@@ -78,10 +84,11 @@ def generic_export(request, model_name=None):
         if allowed_lookups is None:
             return HttpResponseBadRequest(
                 "Filtering on %s is not allowed" % rel
-                )
+            )
         elif lookup_type not in allowed_lookups:
-            return HttpResponseBadRequest("%s may only be filtered using %s"
-                                            % (k, " ".join(allowed_lookups)))
+            return HttpResponseBadRequest(
+                "%s may only be filtered using %s"
+                % (k, " ".join(allowed_lookups)))
         else:
             filters[str(k)] = v
 
